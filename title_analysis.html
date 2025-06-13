@@ -1,0 +1,566 @@
+{% extends "base.html" %}
+
+{% block title %}تحليل العناوين الذكي{% endblock %}
+
+{% block extra_head %}
+<style>
+.analysis-meter {
+    height: 200px;
+    position: relative;
+    border-radius: 50%;
+    background: conic-gradient(
+        #ef4444 0deg 36deg,
+        #f59e0b 36deg 72deg,
+        #3b82f6 72deg 108deg,
+        #10b981 108deg 144deg,
+        #10b981 144deg 180deg
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.meter-inner {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+}
+
+.suggestion-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border: none;
+}
+
+.strength-item {
+    background: rgba(16, 185, 129, 0.1);
+    border-left: 4px solid #10b981;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.weakness-item {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid #ef4444;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.success-probability {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+.timing-recommendation {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-5">
+        <div class="col-12 text-center">
+            <h1 class="display-5 fw-bold text-primary mb-3">
+                <i class="fas fa-brain me-3"></i>تحليل العناوين الذكي
+            </h1>
+            <p class="lead text-muted">
+                اكتشف قوة عناوينك وتوقع احتمالية نجاحها باستخدام الذكاء الاصطناعي المتطور
+            </p>
+        </div>
+    </div>
+
+    <!-- Analysis Form -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <form method="POST" class="needs-validation" novalidate>
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="mb-4">
+                                <label for="title" class="form-label fw-semibold">
+                                    <i class="fas fa-edit me-2"></i>عنوان الفيديو
+                                </label>
+                                <textarea class="form-control form-control-lg" 
+                                          id="title" 
+                                          name="title" 
+                                          rows="3" 
+                                          placeholder="اكتب عنوان الفيديو هنا..."
+                                          required>{{ title if title }}</textarea>
+                                <div class="invalid-feedback">
+                                    يرجى إدخال عنوان للتحليل
+                                </div>
+                                <div class="form-text d-flex justify-content-between">
+                                    <span>
+                                        <span id="titleLength" class="badge bg-secondary">{{ title|length if title else 0 }}</span> حرف
+                                        <span class="text-muted ms-2">الطول المثالي: 40-70 حرف</span>
+                                    </span>
+                                    <span id="lengthIndicator" class="text-muted"></span>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="category" class="form-label fw-semibold">
+                                        <i class="fas fa-tags me-2"></i>فئة المحتوى
+                                    </label>
+                                    <select class="form-select" id="category" name="category">
+                                        <option value="عام" {% if not analysis or analysis.category == 'عام' %}selected{% endif %}>عام</option>
+                                        <option value="تعليم وتطوير" {% if analysis and analysis.category == 'تعليم وتطوير' %}selected{% endif %}>تعليم وتطوير</option>
+                                        <option value="تقنية وبرمجة" {% if analysis and analysis.category == 'تقنية وبرمجة' %}selected{% endif %}>تقنية وبرمجة</option>
+                                        <option value="ترفيه وكوميديا" {% if analysis and analysis.category == 'ترفيه وكوميديا' %}selected{% endif %}>ترفيه وكوميديا</option>
+                                        <option value="رياضة ولياقة" {% if analysis and analysis.category == 'رياضة ولياقة' %}selected{% endif %}>رياضة ولياقة</option>
+                                        <option value="طبخ وطعام" {% if analysis and analysis.category == 'طبخ وطعام' %}selected{% endif %}>طبخ وطعام</option>
+                                        <option value="موسيقى وفن" {% if analysis and analysis.category == 'موسيقى وفن' %}selected{% endif %}>موسيقى وفن</option>
+                                        <option value="سفر وثقافة" {% if analysis and analysis.category == 'سفر وثقافة' %}selected{% endif %}>سفر وثقافة</option>
+                                        <option value="أعمال ومال" {% if analysis and analysis.category == 'أعمال ومال' %}selected{% endif %}>أعمال ومال</option>
+                                        <option value="صحة وجمال" {% if analysis and analysis.category == 'صحة وجمال' %}selected{% endif %}>صحة وجمال</option>
+                                        <option value="عائلة وأطفال" {% if analysis and analysis.category == 'عائلة وأطفال' %}selected{% endif %}>عائلة وأطفال</option>
+                                        <option value="ألعاب" {% if analysis and analysis.category == 'ألعاب' %}selected{% endif %}>ألعاب</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="target_audience" class="form-label fw-semibold">
+                                        <i class="fas fa-users me-2"></i>الجمهور المستهدف (اختياري)
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="target_audience" 
+                                           name="target_audience"
+                                           value="{{ analysis.target_audience if analysis else '' }}"
+                                           placeholder="مثال: الشباب 18-25، المهتمين بالتقنية">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+                                <i class="fas fa-brain me-2"></i>تحليل العنوان
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Example Titles -->
+                    <div class="example-section mt-4">
+                        <h6 class="text-muted mb-3">عناوين للتجربة:</h6>
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2 text-start" 
+                                        onclick="fillTitleExample('كيف تربح 1000 دولار من يوتيوب في شهر واحد؟')">
+                                    كيف تربح 1000 دولار من يوتيوب في شهر واحد؟
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2 text-start" 
+                                        onclick="fillTitleExample('أسرار الطبخ التي لا يخبرك بها أحد!')">
+                                    أسرار الطبخ التي لا يخبرك بها أحد!
+                                </button>
+                            </div>
+                            <div class="col-lg-6">
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2 text-start" 
+                                        onclick="fillTitleExample('تحدي مدهش - لن تصدق ما حدث!')">
+                                    تحدي مدهش - لن تصدق ما حدث!
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2 text-start" 
+                                        onclick="fillTitleExample('دليل شامل لتعلم البرمجة في 2024')">
+                                    دليل شامل لتعلم البرمجة في 2024
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Results -->
+    {% if show_results and analysis %}
+    <div class="row mb-5">
+        <!-- Attractiveness Score -->
+        <div class="col-lg-4 mb-4">
+            <div class="bg-white rounded-4 shadow-sm p-4 text-center">
+                <h5 class="mb-4">
+                    <i class="fas fa-star text-warning me-2"></i>درجة الجاذبية
+                </h5>
+                <div class="analysis-meter mx-auto mb-3">
+                    <div class="meter-inner">
+                        <h2 class="mb-1 text-primary">{{ "%.0f"|format(analysis.attractiveness_score) }}</h2>
+                        <small class="text-muted">من 100</small>
+                    </div>
+                </div>
+                {% if analysis.attractiveness_score >= 80 %}
+                    <span class="badge bg-success fs-6">ممتاز</span>
+                {% elif analysis.attractiveness_score >= 60 %}
+                    <span class="badge bg-info fs-6">جيد</span>
+                {% elif analysis.attractiveness_score >= 40 %}
+                    <span class="badge bg-warning fs-6">متوسط</span>
+                {% else %}
+                    <span class="badge bg-danger fs-6">يحتاج تحسين</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Success Prediction -->
+        <div class="col-lg-4 mb-4">
+            {% if success_analysis %}
+            <div class="success-probability">
+                <h5 class="mb-3">
+                    <i class="fas fa-chart-line me-2"></i>احتمالية النجاح
+                </h5>
+                <div class="display-4 fw-bold mb-2">
+                    {{ "%.0f"|format(success_analysis.success_probability * 100) }}%
+                </div>
+                <p class="mb-3">{{ success_analysis.predicted_performance.description }}</p>
+                
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="small opacity-75">مشاهدات متوقعة</div>
+                        <div class="fw-bold">{{ "{:,}".format(success_analysis.expected_metrics.expected_views) }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="small opacity-75">مستوى الثقة</div>
+                        <div class="fw-bold">{{ "%.0f"|format(success_analysis.confidence_level * 100) }}%</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Timing Recommendations -->
+        <div class="col-lg-4 mb-4">
+            {% if timing_recommendations %}
+            <div class="timing-recommendation">
+                <h5 class="mb-3">
+                    <i class="fas fa-clock me-2"></i>التوقيت الأمثل
+                </h5>
+                
+                <div class="mb-3">
+                    <h6 class="opacity-75">أفضل أيام:</h6>
+                    {% for day in timing_recommendations.best_days %}
+                    <span class="badge bg-light text-dark me-1 mb-1">{{ day }}</span>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="opacity-75">أفضل أوقات:</h6>
+                    {% for hour in timing_recommendations.best_hours %}
+                    <span class="badge bg-light text-dark me-1 mb-1">{{ hour }}:00</span>
+                    {% endfor %}
+                </div>
+                
+                {% if timing_recommendations.reasoning %}
+                <small class="opacity-75">
+                    <i class="fas fa-info-circle me-1"></i>
+                    {{ timing_recommendations.reasoning[0] if timing_recommendations.reasoning }}
+                </small>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Detailed Analysis -->
+    <div class="row mb-5">
+        <!-- Analysis Metrics -->
+        <div class="col-lg-6 mb-4">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-chart-bar text-primary me-2"></i>تحليل مفصل
+                </h5>
+                
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h4 class="text-primary mb-1">{{ "%.1f"|format(analysis.emotional_impact) }}</h4>
+                            <small class="text-muted">التأثير العاطفي</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h4 class="text-success mb-1">{{ "%.1f"|format(analysis.keyword_strength) }}</h4>
+                            <small class="text-muted">قوة الكلمات</small>
+                        </div>
+                    </div>
+                </div>
+
+                {% if title_analysis and title_analysis.detailed_metrics %}
+                <div class="metrics-details">
+                    <div class="metric-item d-flex justify-content-between mb-2">
+                        <span>طول العنوان:</span>
+                        <span class="fw-bold">{{ title_analysis.detailed_metrics.length }} حرف</span>
+                    </div>
+                    <div class="metric-item d-flex justify-content-between mb-2">
+                        <span>عدد الكلمات:</span>
+                        <span class="fw-bold">{{ title_analysis.detailed_metrics.word_count }} كلمة</span>
+                    </div>
+                    <div class="metric-item d-flex justify-content-between mb-2">
+                        <span>يحتوي على أرقام:</span>
+                        <span class="fw-bold">
+                            {% if title_analysis.detailed_metrics.numbers_present %}
+                                <i class="fas fa-check text-success"></i> نعم
+                            {% else %}
+                                <i class="fas fa-times text-danger"></i> لا
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="metric-item d-flex justify-content-between mb-2">
+                        <span>صيغة سؤال:</span>
+                        <span class="fw-bold">
+                            {% if title_analysis.detailed_metrics.question_format %}
+                                <i class="fas fa-check text-success"></i> نعم
+                            {% else %}
+                                <i class="fas fa-times text-danger"></i> لا
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Visual Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-chart-radar text-success me-2"></i>تحليل بصري
+                </h5>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="titleAnalysisChart" 
+                            data-attractiveness="{{ analysis.attractiveness_score or 0 }}"
+                            data-emotional="{{ analysis.emotional_impact or 0 }}"
+                            data-keyword="{{ analysis.keyword_strength or 0 }}"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Strengths and Weaknesses -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-thumbs-up text-success me-2"></i>نقاط القوة
+                </h5>
+                {% if title_analysis and title_analysis.strengths %}
+                    {% for strength in title_analysis.strengths %}
+                        {% if strength %}
+                        <div class="strength-item">
+                            <i class="fas fa-check-circle text-success me-2"></i>{{ strength }}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">لم يتم العثور على نقاط قوة واضحة</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>نقاط التحسين
+                </h5>
+                {% if title_analysis and title_analysis.weaknesses %}
+                    {% for weakness in title_analysis.weaknesses %}
+                        {% if weakness %}
+                        <div class="weakness-item">
+                            <i class="fas fa-exclamation-circle text-warning me-2"></i>{{ weakness }}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">العنوان جيد ولا يحتاج تحسينات كبيرة</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Suggestions -->
+    {% if title_analysis and title_analysis.suggestions %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-lightbulb text-warning me-2"></i>اقتراحات للتحسين
+                </h5>
+                <div class="row">
+                    {% for suggestion in title_analysis.suggestions %}
+                    <div class="col-lg-6 mb-3">
+                        <div class="suggestion-card">
+                            <i class="fas fa-arrow-right me-2"></i>{{ suggestion }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Optimization Tips -->
+    {% if title_analysis and title_analysis.optimization_tips %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-light rounded-4 p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-tools text-primary me-2"></i>نصائح التحسين
+                </h5>
+                <div class="row">
+                    {% for tip in title_analysis.optimization_tips %}
+                    <div class="col-lg-6 mb-3">
+                        <div class="tip-item bg-white rounded p-3">
+                            <i class="fas fa-lightbulb text-warning me-2"></i>{{ tip }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Quick Analysis Section (if no results) -->
+    {% if not show_results %}
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-brain fa-5x text-primary mb-4 opacity-50"></i>
+                <h3 class="text-muted">ابدأ بتحليل عنوانك</h3>
+                <p class="lead text-muted">أدخل عنوان الفيديو في النموذج أعلاه للحصول على تحليل شامل</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Back to Home -->
+    <div class="row mt-5">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-home me-2"></i>العودة للصفحة الرئيسية
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Real-time title length counter and validation
+document.getElementById('title').addEventListener('input', function() {
+    const length = this.value.length;
+    const lengthBadge = document.getElementById('titleLength');
+    const indicator = document.getElementById('lengthIndicator');
+    
+    lengthBadge.textContent = length;
+    
+    // Update badge color and indicator based on optimal length
+    lengthBadge.className = 'badge ';
+    if (length >= 40 && length <= 70) {
+        lengthBadge.className += 'bg-success';
+        indicator.textContent = 'طول مثالي';
+        indicator.className = 'text-success';
+    } else if (length >= 30 && length <= 80) {
+        lengthBadge.className += 'bg-warning';
+        indicator.textContent = length < 40 ? 'قصير نسبياً' : 'طويل نسبياً';
+        indicator.className = 'text-warning';
+    } else if (length < 30) {
+        lengthBadge.className += 'bg-danger';
+        indicator.textContent = 'قصير جداً';
+        indicator.className = 'text-danger';
+    } else {
+        lengthBadge.className += 'bg-danger';
+        indicator.textContent = 'طويل جداً';
+        indicator.className = 'text-danger';
+    }
+});
+
+// Fill example title function
+function fillTitleExample(title) {
+    const titleInput = document.getElementById('title');
+    titleInput.value = title;
+    titleInput.dispatchEvent(new Event('input')); // Trigger length counter
+    titleInput.focus();
+}
+
+// Initialize analysis chart
+document.addEventListener('DOMContentLoaded', function() {
+    const chartCanvas = document.getElementById('titleAnalysisChart');
+    if (chartCanvas) {
+        const attractiveness = parseFloat(chartCanvas.dataset.attractiveness || 0) / 10; // Convert to 0-10 scale
+        const emotional = parseFloat(chartCanvas.dataset.emotional || 0);
+        const keyword = parseFloat(chartCanvas.dataset.keyword || 0);
+        
+        new Chart(chartCanvas, {
+            type: 'radar',
+            data: {
+                labels: ['الجاذبية', 'التأثير العاطفي', 'قوة الكلمات', 'الشمولية'],
+                datasets: [{
+                    label: 'درجة التحليل',
+                    data: [attractiveness, emotional, keyword, (attractiveness + emotional + keyword) / 3],
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(59, 130, 246, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { display: true },
+                        suggestedMin: 0,
+                        suggestedMax: 10,
+                        ticks: { 
+                            font: { family: 'Tajawal' },
+                            stepSize: 2
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { 
+                        display: false 
+                    }
+                }
+            }
+        });
+    }
+});
+
+// Form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
+{% endblock %}

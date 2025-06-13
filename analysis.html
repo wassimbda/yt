@@ -1,0 +1,563 @@
+{% extends "base.html" %}
+
+{% block title %}نتائج تحليل القناة - {{ channel_info.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.metric-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+    height: 100%;
+}
+
+.score-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0 auto 1rem;
+}
+
+.score-excellent { background: linear-gradient(135deg, #10b981, #059669); }
+.score-good { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.score-average { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.score-poor { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+.video-card {
+    border: none;
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.video-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.timing-badge {
+    border-radius: 50px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Channel Header -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-2 text-center mb-3 mb-md-0">
+                        {% if channel_info.thumbnail_url %}
+                        <img src="{{ channel_info.thumbnail_url }}" 
+                             alt="{{ channel_info.title }}" 
+                             class="rounded-circle shadow" 
+                             style="width: 100px; height: 100px; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                             style="width: 100px; height: 100px;">
+                            <i class="fas fa-tv fa-2x"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-10">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <h1 class="h3 fw-bold text-primary mb-2">{{ channel_info.title }}</h1>
+                                <p class="text-muted mb-3">{{ channel_info.description[:200] }}{% if channel_info.description|length > 200 %}...{% endif %}</p>
+                                
+                                {% if analysis.detected_niche %}
+                                <span class="badge bg-primary me-2">
+                                    <i class="fas fa-tag me-1"></i>{{ analysis.detected_niche }}
+                                </span>
+                                {% endif %}
+                                
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-calendar me-1"></i>تم التحليل: {{ analysis.analysis_date.strftime('%Y-%m-%d') }}
+                                </span>
+                            </div>
+                            <div class="col-lg-4 text-lg-end">
+                                <div class="channel-stats">
+                                    <div class="stat-item mb-2">
+                                        <i class="fas fa-users text-primary me-2"></i>
+                                        <strong>{{ "{:,}".format(channel_info.subscriber_count) }}</strong> مشترك
+                                    </div>
+                                    <div class="stat-item mb-2">
+                                        <i class="fas fa-video text-success me-2"></i>
+                                        <strong>{{ "{:,}".format(channel_info.video_count) }}</strong> فيديو
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="fas fa-eye text-info me-2"></i>
+                                        <strong>{{ "{:,}".format(channel_info.view_count) }}</strong> مشاهدة
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overall Rating -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-white rounded-4 shadow-sm p-4 text-center">
+                <h2 class="h4 mb-4">التقييم العام للقناة</h2>
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        {% set overall_score = analysis.overall_rating %}
+                        {% if overall_score >= 8 %}
+                            {% set score_class = 'score-excellent' %}
+                            {% set score_text = 'ممتاز' %}
+                            {% set score_icon = 'fas fa-star' %}
+                        {% elif overall_score >= 6 %}
+                            {% set score_class = 'score-good' %}
+                            {% set score_text = 'جيد' %}
+                            {% set score_icon = 'fas fa-thumbs-up' %}
+                        {% elif overall_score >= 4 %}
+                            {% set score_class = 'score-average' %}
+                            {% set score_text = 'متوسط' %}
+                            {% set score_icon = 'fas fa-balance-scale' %}
+                        {% else %}
+                            {% set score_class = 'score-poor' %}
+                            {% set score_text = 'يحتاج تحسين' %}
+                            {% set score_icon = 'fas fa-exclamation-triangle' %}
+                        {% endif %}
+                        
+                        <div class="score-circle {{ score_class }} text-white">
+                            {{ "%.1f"|format(overall_score) }}/10
+                        </div>
+                        <h3 class="h5 mb-2">
+                            <i class="{{ score_icon }} me-2"></i>{{ score_text }}
+                        </h3>
+                        <p class="text-muted">التقييم مبني على تحليل شامل للمحتوى والأداء</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Metrics -->
+    <div class="row mb-5">
+        <div class="col-md-4 mb-4">
+            <div class="metric-card">
+                <i class="fas fa-image fa-2x mb-3"></i>
+                <h4>{{ "%.1f"|format(analysis.channel_art_score) }}/10</h4>
+                <h6>صورة القناة والتصميم</h6>
+                <p class="small opacity-75 mb-0">تقييم جودة صورة القناة والهوية البصرية</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="metric-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <i class="fas fa-images fa-2x mb-3"></i>
+                <h4>{{ "%.1f"|format(analysis.thumbnail_score) }}/10</h4>
+                <h6>جودة الصور المصغرة</h6>
+                <p class="small opacity-75 mb-0">تقييم جاذبية وفعالية الصور المصغرة</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="metric-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <i class="fas fa-edit fa-2x mb-3"></i>
+                <h4>{{ "%.1f"|format(analysis.title_optimization_score) }}/10</h4>
+                <h6>تحسين العناوين</h6>
+                <p class="small opacity-75 mb-0">مدى تحسين العناوين للبحث والجاذبية</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-chart-radar text-primary me-2"></i>تحليل الأداء
+                </h5>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="performanceChart" 
+                            data-channel-art="{{ analysis.channel_art_score }}"
+                            data-thumbnails="{{ analysis.thumbnail_score }}"
+                            data-titles="{{ analysis.title_optimization_score }}"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-chart-pie text-success me-2"></i>توزيع النقاط
+                </h5>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="scoreDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Niche Analysis -->
+    {% if niche_analysis %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-bullseye text-warning me-2"></i>تحليل المجال والفئة
+                </h5>
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="niche-info">
+                            <h6 class="text-primary">المجال الأساسي:</h6>
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-primary fs-6 me-3">{{ niche_analysis.primary_niche }}</span>
+                                <div class="progress flex-grow-1" style="height: 20px;">
+                                    <div class="progress-bar" style="width: {{ (niche_analysis.confidence_score * 100)|round }}%">
+                                        {{ (niche_analysis.confidence_score * 100)|round }}% ثقة
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if niche_analysis.secondary_niches %}
+                            <h6 class="text-secondary">المجالات الفرعية:</h6>
+                            <div class="mb-3">
+                                {% for niche in niche_analysis.secondary_niches %}
+                                <span class="badge bg-secondary me-2 mb-2">{{ niche }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="niche-metrics row">
+                                <div class="col-md-6">
+                                    <small class="text-muted">مستوى المنافسة:</small>
+                                    <div class="fw-bold">{{ niche_analysis.competition_level }}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">إمكانيات النمو:</small>
+                                    <div class="fw-bold">{{ niche_analysis.growth_potential.level or 'متوسط' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="monetization-info">
+                            <h6 class="text-success">فرص الربح:</h6>
+                            <ul class="list-unstyled">
+                                {% for opportunity in niche_analysis.monetization_opportunities %}
+                                <li class="mb-1">
+                                    <i class="fas fa-dollar-sign text-success me-2"></i>{{ opportunity }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Timing Analysis -->
+    {% if timing_analysis %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-clock text-info me-2"></i>تحليل التوقيت الأمثل للنشر
+                </h5>
+                <div class="row">
+                    <div class="col-lg-6">
+                        <h6 class="text-primary">أفضل أيام النشر:</h6>
+                        <div class="mb-3">
+                            {% for day in timing_analysis.best_days %}
+                            <span class="badge bg-primary timing-badge me-2 mb-2">{{ day }}</span>
+                            {% endfor %}
+                        </div>
+                        
+                        <h6 class="text-success">أفضل أوقات النشر:</h6>
+                        <div class="mb-3">
+                            {% for hour in timing_analysis.best_hours %}
+                            <span class="badge bg-success timing-badge me-2 mb-2">{{ hour }}:00</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="timing-info">
+                            <div class="info-item mb-2">
+                                <strong>المنطقة الزمنية:</strong> {{ timing_analysis.timezone }}
+                            </div>
+                            <div class="info-item mb-2">
+                                <strong>مستوى الثقة:</strong> 
+                                <span class="badge bg-info">{{ (timing_analysis.confidence_score * 100)|round }}%</span>
+                            </div>
+                            <div class="info-item mb-2">
+                                <strong>جودة البيانات:</strong> 
+                                <span class="badge bg-secondary">{{ timing_analysis.data_quality }}</span>
+                            </div>
+                        </div>
+                        
+                        {% if timing_analysis.recommendations %}
+                        <div class="recommendations mt-3">
+                            <h6 class="text-warning">التوصيات:</h6>
+                            {% for recommendation in timing_analysis.recommendations %}
+                            <small class="d-block text-muted mb-1">
+                                <i class="fas fa-lightbulb me-1"></i>{{ recommendation }}
+                            </small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Videos -->
+    {% if videos %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-video text-danger me-2"></i>أحدث الفيديوهات ({{ videos|length }})
+                </h5>
+                <div class="row">
+                    {% for video in videos %}
+                    <div class="col-lg-6 mb-4">
+                        <div class="video-card bg-light rounded-3 p-3">
+                            <div class="row">
+                                <div class="col-4">
+                                    {% if video.thumbnail_url %}
+                                    <img src="{{ video.thumbnail_url }}" 
+                                         alt="{{ video.title }}" 
+                                         class="img-fluid rounded"
+                                         style="aspect-ratio: 16/9; object-fit: cover;">
+                                    {% else %}
+                                    <div class="bg-secondary rounded d-flex align-items-center justify-content-center text-white" 
+                                         style="aspect-ratio: 16/9;">
+                                        <i class="fas fa-play"></i>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-8">
+                                    <h6 class="line-clamp-2 mb-2">{{ video.title }}</h6>
+                                    <div class="video-stats small text-muted">
+                                        <div class="mb-1">
+                                            <i class="fas fa-eye me-1"></i>{{ "{:,}".format(video.view_count) }} مشاهدة
+                                        </div>
+                                        <div class="mb-1">
+                                            <i class="fas fa-thumbs-up me-1"></i>{{ "{:,}".format(video.like_count) }} إعجاب
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-comments me-1"></i>{{ "{:,}".format(video.comment_count) }} تعليق
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recommendations -->
+    {% if analysis_result.recommendations %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-lightbulb text-warning me-2"></i>توصيات للتحسين
+                </h5>
+                <div class="row">
+                    {% for recommendation in analysis_result.recommendations %}
+                    <div class="col-lg-6 mb-3">
+                        <div class="recommendation-item bg-light rounded-3 p-3">
+                            <i class="fas fa-arrow-right text-primary me-2"></i>
+                            {{ recommendation }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Video Ideas Generator -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-white rounded-4 shadow-sm p-4">
+                <h5 class="mb-4">
+                    <i class="fas fa-lightbulb text-success me-2"></i>مولد أفكار الفيديوهات
+                </h5>
+                
+                {% if not video_ideas %}
+                <form method="POST" action="{{ url_for('generate_ideas') }}" class="needs-validation" novalidate>
+                    <input type="hidden" name="analysis_id" value="{{ analysis.id }}">
+                    
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="mb-3">
+                                <label for="niche" class="form-label">اختر المجال:</label>
+                                <select class="form-select" name="niche" id="niche">
+                                    <option value="">-- اختر المجال --</option>
+                                    <option value="تعليم وتطوير" {% if analysis.detected_niche == 'تعليم وتطوير' %}selected{% endif %}>تعليم وتطوير</option>
+                                    <option value="تقنية وبرمجة" {% if analysis.detected_niche == 'تقنية وبرمجة' %}selected{% endif %}>تقنية وبرمجة</option>
+                                    <option value="ترفيه وكوميديا" {% if analysis.detected_niche == 'ترفيه وكوميديا' %}selected{% endif %}>ترفيه وكوميديا</option>
+                                    <option value="رياضة ولياقة" {% if analysis.detected_niche == 'رياضة ولياقة' %}selected{% endif %}>رياضة ولياقة</option>
+                                    <option value="طبخ وطعام" {% if analysis.detected_niche == 'طبخ وطعام' %}selected{% endif %}>طبخ وطعام</option>
+                                    <option value="موسيقى وفن" {% if analysis.detected_niche == 'موسيقى وفن' %}selected{% endif %}>موسيقى وفن</option>
+                                    <option value="سفر وثقافة" {% if analysis.detected_niche == 'سفر وثقافة' %}selected{% endif %}>سفر وثقافة</option>
+                                    <option value="أعمال ومال" {% if analysis.detected_niche == 'أعمال ومال' %}selected{% endif %}>أعمال ومال</option>
+                                    <option value="صحة وجمال" {% if analysis.detected_niche == 'صحة وجمال' %}selected{% endif %}>صحة وجمال</option>
+                                    <option value="عائلة وأطفال" {% if analysis.detected_niche == 'عائلة وأطفال' %}selected{% endif %}>عائلة وأطفال</option>
+                                    <option value="ألعاب" {% if analysis.detected_niche == 'ألعاب' %}selected{% endif %}>ألعاب</option>
+                                    <option value="أخرى">أخرى</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="custom_niche" class="form-label">أو اكتب مجال مخصص:</label>
+                                <input type="text" class="form-control" name="custom_niche" id="custom_niche" 
+                                       placeholder="مثال: تصميم الجرافيك، التصوير الفوتوغرافي، إلخ">
+                            </div>
+                        </div>
+                        <div class="col-lg-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success btn-lg w-100">
+                                <i class="fas fa-magic me-2"></i>إنشاء أفكار فيديوهات
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                {% else %}
+                <!-- Display Generated Ideas -->
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    تم إنشاء {{ video_ideas|length }} أفكار فيديوهات لمجال "{{ selected_niche }}"
+                </div>
+                
+                <div class="row">
+                    {% for idea in video_ideas %}
+                    <div class="col-lg-6 mb-4">
+                        <div class="idea-card bg-light rounded-3 p-4 h-100">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h6 class="text-primary mb-0">فكرة {{ loop.index }}</h6>
+                                {% if idea.success_score %}
+                                <span class="badge bg-success">{{ "%.1f"|format(idea.success_score) }}/10</span>
+                                {% endif %}
+                            </div>
+                            <h5 class="line-clamp-2 mb-3">{{ idea.title }}</h5>
+                            <p class="line-clamp-3 text-muted mb-3">{{ idea.description }}</p>
+                            {% if idea.video_type %}
+                            <span class="badge bg-secondary">{{ idea.video_type }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>تحليل قناة أخرى
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Back to Home -->
+    {% if not video_ideas %}
+    <div class="row">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-arrow-right me-2"></i>العودة للصفحة الرئيسية
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize charts when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Performance radar chart
+    const performanceCanvas = document.getElementById('performanceChart');
+    if (performanceCanvas) {
+        const channelArt = parseFloat(performanceCanvas.dataset.channelArt || 0);
+        const thumbnails = parseFloat(performanceCanvas.dataset.thumbnails || 0);
+        const titles = parseFloat(performanceCanvas.dataset.titles || 0);
+        
+        new Chart(performanceCanvas, {
+            type: 'radar',
+            data: {
+                labels: ['صورة القناة', 'الصور المصغرة', 'تحسين العناوين', 'الاستراتيجية العامة'],
+                datasets: [{
+                    label: 'درجة الأداء',
+                    data: [channelArt, thumbnails, titles, (channelArt + thumbnails + titles) / 3],
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    borderColor: 'rgba(37, 99, 235, 1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgba(37, 99, 235, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(37, 99, 235, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { display: true },
+                        suggestedMin: 0,
+                        suggestedMax: 10,
+                        ticks: { font: { family: 'Tajawal' } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+    
+    // Score distribution chart
+    const scoreCanvas = document.getElementById('scoreDistributionChart');
+    if (scoreCanvas) {
+        new Chart(scoreCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: ['ممتاز (8-10)', 'جيد (6-8)', 'متوسط (4-6)', 'ضعيف (0-4)'],
+                datasets: [{
+                    data: [25, 35, 30, 10],
+                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        position: 'bottom',
+                        labels: { font: { family: 'Tajawal' } }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
